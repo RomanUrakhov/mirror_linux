@@ -5,7 +5,7 @@ import threading
 import time
 
 
-class Thread_with_trace(threading.Thread):
+class ThreadWithTrace(threading.Thread):
     def __init__(self, *args, **keywords):
         threading.Thread.__init__(self, *args, **keywords)
         self.killed = False
@@ -40,6 +40,7 @@ def func():
     while True:
         print('thread running')
 
+
 class TaskRunner:
     def __init__(self, repositoryClass):
         self.repo = repositoryClass.repo
@@ -54,7 +55,7 @@ class TaskRunner:
         self.repo.save()
 
     def body(self):
-        thread = Thread_with_trace(
+        thread = ThreadWithTrace(
             target=lambda: self.repositoryClass.run()
         )
         thread.start()
@@ -66,5 +67,3 @@ class TaskRunner:
         thread = self.body()
         self.set_status_run_off()
         return thread
-
-

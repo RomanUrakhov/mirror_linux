@@ -1,5 +1,6 @@
-from peewee import *
+from peewee import MySQLDatabase, PostgresqlDatabase, SqliteDatabase
 import config
+
 
 def get_db():
     if config.db == "mysql":

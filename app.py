@@ -5,7 +5,7 @@ from queries.repository import *
 from queries.user import *
 from queries.task import *
 import re
-from repository import scripts
+from mirror import scripts
 import config
 
 DEBUG = True
@@ -16,6 +16,7 @@ app.config.from_object(__name__)
 CORS(app)
 
 auth = HTTPBasicAuth()
+
 
 @auth.verify_password
 def verify_password(username, password):
@@ -30,66 +31,74 @@ def verify_password(username, password):
 def index():
     return render_template('index.html')
 
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def catch_all(path):
     return render_template('index.html')
 
+
 #####################################
 ##  Task
 #####################################
-@app.route("/api/repository/check", methods=['POST'])
+@app.route("/api/mirror/check", methods=['POST'])
 @auth.login_required
 def check_repository():
     name = request.get_json()
     return jsonify(check_repository_query(name["name"]))
 
 
-@app.route("/api/repository", methods=['GET'])
+@app.route("/api/mirror", methods=['GET'])
 @auth.login_required
 def get_repository_list():
-    offset = request.args.get("offset", default=0, type = int)
-    limit = request.args.get("limit", default=15, type = int)
+    offset = request.args.get("offset", default=0, type=int)
+    limit = request.args.get("limit", default=15, type=int)
     data = get_repository_list_query(offset, limit, auth.username())
     if data == "-1":
         raise -1
     return jsonify(data)
 
-@app.route("/api/repository/my", methods=['GET'])
+
+@app.route("/api/mirror/my", methods=['GET'])
 @auth.login_required
 def get_my_repository_list():
-    offset = request.args.get("offset", default=0, type = int)
-    limit = request.args.get("limit", default=15, type = int)
+    offset = request.args.get("offset", default=0, type=int)
+    limit = request.args.get("limit", default=15, type=int)
     return jsonify(get_repository_list_query(offset, limit, auth.username(), my=True))
 
-@app.route("/api/repository/count", methods=['GET'])
+
+@app.route("/api/mirror/count", methods=['GET'])
 @auth.login_required
 def get_repository_count():
     return jsonify(get_repository_count_query())
 
-@app.route("/api/repository/my/count", methods=['GET'])
+
+@app.route("/api/mirror/my/count", methods=['GET'])
 @auth.login_required
 def get_my_repository_count():
     return jsonify(get_repository_count_query(auth.username()))
 
-@app.route("/api/repository/<int:repository_id>", methods=['GET'])
+
+@app.route("/api/mirror/<int:repository_id>", methods=['GET'])
 @auth.login_required
 def get_repository(repository_id):
     return jsonify(get_repository_query(repository_id))
 
-@app.route("/api/repository/create", methods=['POST'])
+
+@app.route("/api/mirror/create", methods=['POST'])
 @auth.login_required
 def create_repository():
     repository = request.get_json()
-    if (check_repository_query(repository["name"])):
+    if check_repository_query(repository["name"]):
         return jsonify("-1")
 
     result = ""
     if int(repository["mirror_type"]) == 0:
-        result = re.match(r"^(?:rsync:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",repository["mirror_url"])
+        result = re.match(r"^(?:rsync:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
+                          repository["mirror_url"])
     else:
-        result = re.match(r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$", repository["mirror_url"])
-
+        result = re.match(r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
+                          repository["mirror_url"])
 
     if not result:
         return jsonify("-2")
@@ -102,16 +111,19 @@ def create_repository():
     create_repository_query(repository, auth.username())
     return jsonify("ok")
 
-@app.route("/api/repository/<int:repository_id>/update", methods=['PUT'])
+
+@app.route("/api/mirror/<int:repository_id>/update", methods=['PUT'])
 @auth.login_required
 def update_repository(repository_id):
     repository = request.get_json()
 
     result = ""
     if int(repository["mirror_type"]) == 0:
-        result = re.match(r"^(?:rsync:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",repository["mirror_url"])
+        result = re.match(r"^(?:rsync:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
+                          repository["mirror_url"])
     else:
-        result = re.match(r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$", repository["mirror_url"])
+        result = re.match(r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
+                          repository["mirror_url"])
 
     if not result:
         return jsonify("-2")
@@ -126,23 +138,27 @@ def update_repository(repository_id):
         return jsonify("ok")
     return jsonify(code)
 
-@app.route("/api/repository/<int:repository_id>/delete", methods=['DELETE'])
+
+@app.route("/api/mirror/<int:repository_id>/delete", methods=['DELETE'])
 @auth.login_required
 def delete_repository(repository_id):
     delete_repository_query(repository_id, auth.username())
     return jsonify("ok")
 
-@app.route("/api/repository/<int:repository_id>/reset", methods=['get'])
+
+@app.route("/api/mirror/<int:repository_id>/reset", methods=['get'])
 @auth.login_required
 def reset_repository(repository_id):
     reset_repository_query(repository_id, auth.username())
     return jsonify("ok")
 
-@app.route("/api/repository/<int:repository_id>/run", methods=['get'])
+
+@app.route("/api/mirror/<int:repository_id>/run", methods=['get'])
 @auth.login_required
 def run_task(repository_id):
     run_repository_query(repository_id, auth.username())
     return jsonify("ok")
+
 
 #####################################
 ##  User
@@ -154,35 +170,40 @@ def check_user():
     name = request.get_json()
     return jsonify(check_user_query(name["name"]))
 
+
 @app.route("/api/user/count", methods=['GET'])
 @auth.login_required
 def get_user_count():
     return jsonify(get_user_count_query())
 
+
 @app.route("/api/user", methods=['GET'])
 @auth.login_required
 def get_user_list():
-    offset = request.args.get("offset", default=0, type = int)
-    limit = request.args.get("limit", default=15, type = int)
+    offset = request.args.get("offset", default=0, type=int)
+    limit = request.args.get("limit", default=15, type=int)
     data = get_user_list_query(offset, limit, auth.username())
     if data == "-1":
         raise -1
     return jsonify(data)
+
 
 @app.route("/api/user/<int:user_id>", methods=['GET'])
 @auth.login_required
 def get_user(user_id):
     return jsonify(get_user_query(user_id))
 
+
 @app.route("/api/user/create", methods=['POST'])
 @auth.login_required
 def create_user():
     user = request.get_json()
-    if(check_user_query(user["username"])):
+    if (check_user_query(user["username"])):
         return jsonify("-1")
 
     create_user_query(user, auth.username())
     return jsonify("ok")
+
 
 @app.route("/api/user/<int:user_id>/update", methods=['PUT'])
 @auth.login_required
@@ -193,11 +214,13 @@ def update_user(user_id):
         return jsonify("ok")
     return jsonify(code)
 
+
 @app.route("/api/user/<int:user_id>/delete", methods=['DELETE'])
 @auth.login_required
 def delete_user(user_id):
     delete_user_query(user_id, auth.username())
     return jsonify("ok")
+
 
 @app.route("/api/user/check_group", methods=['GET'])
 @auth.login_required
@@ -214,17 +237,20 @@ def get_group():
 def get_task_count():
     return jsonify(get_task_count_query())
 
+
 @app.route("/api/task", methods=['GET'])
 @auth.login_required
 def get_task_list():
-    offset = request.args.get("offset", default=0, type = int)
-    limit = request.args.get("limit", default=50, type = int)
+    offset = request.args.get("offset", default=0, type=int)
+    limit = request.args.get("limit", default=50, type=int)
     return jsonify(get_task_list_query(offset, limit))
+
 
 @app.route("/api/task/<int:task_id>", methods=['GET'])
 @auth.login_required
 def get_task(task_id):
     return jsonify(get_task_query(task_id))
+
 
 #####################################
 ##  zpool
@@ -238,6 +264,7 @@ def get_zpool_list_resp():
         return jsonify(res)
     else:
         return jsonify(["zroot"])
+
 
 #####################################
 ##  Main

@@ -1,9 +1,11 @@
 from models.models import *
 import datetime
-from repository.RepositoryClasses import *
+from dateutil.relativedelta import relativedelta
+from mirror.RepositoryClasses import *
 from tasks.TaskRunner import TaskRunner
 
-def get_repository_query(id = 1):
+
+def get_repository_query(id=1):
     repository = Repository.get_by_id(id)
     print(repository)
     return {
@@ -17,22 +19,22 @@ def get_repository_query(id = 1):
         "mirror_args": repository.mirror_args,
         "user": repository.user.username,
         "mirror_init": repository.mirror_init,
-        "schedule_status" : repository.schedule_status,
+        "schedule_status": repository.schedule_status,
         "schedule_run": repository.schedule_run,
         "schedule_number": repository.schedule_number,
 
-        "schedule_minute" : repository.schedule_minute,
-        "schedule_hour" : repository.schedule_hour,
-        "schedule_day" : repository.schedule_day,
-        "schedule_month" : repository.schedule_month,
-        "schedule_year" : repository.schedule_year,
+        "schedule_minute": repository.schedule_minute,
+        "schedule_hour": repository.schedule_hour,
+        "schedule_day": repository.schedule_day,
+        "schedule_month": repository.schedule_month,
+        "schedule_year": repository.schedule_year,
 
         "created_at": repository.created_at,
         "updated_at": repository.updated_at,
     }
 
-def get_repository_count_query(username = ""):
 
+def get_repository_count_query(username=""):
     if username == "":
         query = Repository.select().count()
     else:
@@ -41,15 +43,17 @@ def get_repository_count_query(username = ""):
 
     return query
 
+
 def check_repository_query(name):
-     try:
-         Repository.get(Repository.name == name)
-     except:
-         return False
+    try:
+        Repository.get(Repository.name == name)
+    except:
+        return False
 
-     return True
+    return True
 
-def get_repository_list_query(offset=0, limit=15, username = "", my=False):
+
+def get_repository_list_query(offset=0, limit=15, username="", my=False):
     repositoryList = []
     query = None
     user = User.get(User.username == username)
@@ -71,33 +75,34 @@ def get_repository_list_query(offset=0, limit=15, username = "", my=False):
         })
     return repositoryList
 
+
 def create_repository_query(jsonRepository, username):
     user = User.get(User.username == username)
 
     repository = Repository(
-        name = jsonRepository["name"],
+        name=jsonRepository["name"],
         mirror_url=jsonRepository["mirror_url"],
         mirror_zpool=jsonRepository["mirror_zpool"],
-        mirror_location = jsonRepository["mirror_location"],
+        mirror_location=jsonRepository["mirror_location"],
         mirror_type=jsonRepository["mirror_type"],
         mirror_args=jsonRepository["mirror_args"],
 
         user=user,
 
-        schedule_status = jsonRepository["schedule_status"],
+        schedule_status=jsonRepository["schedule_status"],
         schedule_number=jsonRepository["schedule_number"],
 
-        schedule_minute = jsonRepository["schedule_minute"],
-        schedule_hour = jsonRepository["schedule_hour"],
-        schedule_day = jsonRepository["schedule_day"],
-        schedule_month = jsonRepository["schedule_month"],
-        schedule_year = jsonRepository["schedule_year"]
+        schedule_minute=jsonRepository["schedule_minute"],
+        schedule_hour=jsonRepository["schedule_hour"],
+        schedule_day=jsonRepository["schedule_day"],
+        schedule_month=jsonRepository["schedule_month"],
+        schedule_year=jsonRepository["schedule_year"]
     ).save()
     repository = Repository.get(Repository.name == jsonRepository["name"])
-    Task(repository = repository.name, message="{} create".format(jsonRepository["name"]), user=user.username).save()
-    ###############
+    # создание таска здесь не должно быть -- задача модуля task (создать метод)
+    Task(repository=repository.name, message="{} create".format(jsonRepository["name"]), user=user.username).save()
     TaskRunner(RepositoryFullCreate(repository)).run()
-    ###############
+
 
 def update_repository_query(id, jsonRepository, username):
     print(jsonRepository)
@@ -105,7 +110,7 @@ def update_repository_query(id, jsonRepository, username):
     user = User.get(User.username == username)
     repository = Repository().get_by_id(id)
 
-    if(check_repository_query(jsonRepository["name"]) and repository.name != jsonRepository["name"]):
+    if check_repository_query(jsonRepository["name"]) and repository.name != jsonRepository["name"]:
         return "-1"
 
     mirror_location = repository.mirror_location
@@ -132,12 +137,12 @@ def update_repository_query(id, jsonRepository, username):
     repository.save()
 
     repository = Repository.get(Repository.name == jsonRepository["name"])
+    # ТАСК ВЫНЕСТИ!
     Task(repository=repository.name, message="{} update".format(jsonRepository["name"]), user=user.username).save()
-    ###############
-    if(repository.mirror_location != mirror_location):
+    if repository.mirror_location != mirror_location:
         TaskRunner(RepositoryReset(repository)).run()
-    ###############
     return 0
+
 
 def delete_repository_query(id, username):
     user = User.get(User.username == username)
@@ -145,8 +150,9 @@ def delete_repository_query(id, username):
     ###############
     TaskRunner(RepositoryDelete(repository)).run()
     ###############
-    Task(repository = repository.name, message="{} delete".format(repository.name), user=user.username).save()
+    Task(repository=repository.name, message="{} delete".format(repository.name), user=user.username).save()
     repository.delete_instance()
+
 
 def run_repository_query(id, username):
     user = User.get(User.username == username)
@@ -156,6 +162,7 @@ def run_repository_query(id, username):
     ###############
     Task(repository=repository.name, message="{} run".format(repository.name), user=user.username).save()
 
+
 def reset_repository_query(id, username):
     user = User.get(User.username == username)
     repository = Repository().get_by_id(id)
@@ -164,3 +171,26 @@ def reset_repository_query(id, username):
     TaskRunner(RepositoryReset(repository)).run()
     ###############
     Task(repository=repository.name, message="{} run".format(repository.name), user=user.username).save()
+
+
+def update_date_task(repo: Repository):
+    date = datetime.datetime.now()
+    date += relativedelta(
+        years=repo.schedule_year,
+        months=repo.schedule_month,
+        days=repo.schedule_day,
+        hours=repo.schedule_hour,
+        minutes=repo.schedule_minute
+    )
+    repo.schedule_next_update = date
+    repo.save()
+
+
+def init_mirror(repo: Repository):
+    repo.mirror_init = True
+    repo.save()
+
+
+def deinit_mirror(repo: Repository):
+    repo.mirror_init = False
+    repo.save()

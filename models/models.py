@@ -5,9 +5,11 @@ import hashlib
 
 db = get_db()
 
+
 class BaseModel(Model):
     class Meta:
         database = db
+
 
 class User(BaseModel):
     username = CharField()
@@ -44,11 +46,13 @@ class Repository(BaseModel):
     created_at = DateTimeField(default=datetime.datetime.now())
     updated_at = DateTimeField(default=datetime.datetime.now())
 
+
 class Task(BaseModel):
     message = CharField()
     repository = CharField()
     user = CharField()
     date = DateTimeField(default=datetime.datetime.now)
+
 
 class QueueTask(BaseModel):
     repository = ForeignKeyField(Repository, backref='repositories', unique=True, on_delete='cascade')

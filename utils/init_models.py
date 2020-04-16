@@ -7,7 +7,7 @@ def init_user():
     User(username="user1", password=User().sha256("123"), group=1).save()
 
 
-def init_Task():
+def init_task():
     for i in range(2):
         create_repository_query({
             "mirror_zpool": "zroot",
