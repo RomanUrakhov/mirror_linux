@@ -1,8 +1,9 @@
 from models.models import *
 import datetime
 from dateutil.relativedelta import relativedelta
-from mirror.RepositoryClasses import *
+from mirror.repository import LinuxRepoManager
 from tasks.TaskRunner import TaskRunner
+from queries import task
 
 
 def get_repository_query(id=1):
@@ -47,14 +48,13 @@ def get_repository_count_query(username=""):
 def check_repository_query(name):
     try:
         Repository.get(Repository.name == name)
-    except:
+    except DoesNotExist as e:
         return False
-
     return True
 
 
 def get_repository_list_query(offset=0, limit=15, username="", my=False):
-    repositoryList = []
+    repository_list = []
     query = None
     user = User.get(User.username == username)
     if not my:
@@ -65,7 +65,7 @@ def get_repository_list_query(offset=0, limit=15, username="", my=False):
         query = Repository.select().where(Repository.user == user).offset(offset).limit(limit)
 
     for repository in query:
-        repositoryList.append({
+        repository_list.append({
             "id": int(repository.__str__()),
             "name": repository.name,
             "user": repository.user.username,
@@ -73,84 +73,79 @@ def get_repository_list_query(offset=0, limit=15, username="", my=False):
             "schedule_run": repository.schedule_run,
             "updated_at": repository.updated_at
         })
-    return repositoryList
+    return repository_list
 
 
-def create_repository_query(jsonRepository, username):
+def create_repository_query(json_repository, username):
     user = User.get(User.username == username)
 
     repository = Repository(
-        name=jsonRepository["name"],
-        mirror_url=jsonRepository["mirror_url"],
-        mirror_zpool=jsonRepository["mirror_zpool"],
-        mirror_location=jsonRepository["mirror_location"],
-        mirror_type=jsonRepository["mirror_type"],
-        mirror_args=jsonRepository["mirror_args"],
+        name=json_repository["name"],
+        mirror_url=json_repository["mirror_url"],
+        mirror_zpool=json_repository["mirror_zpool"],
+        mirror_location=json_repository["mirror_location"],
+        mirror_type=json_repository["mirror_type"],
+        mirror_args=json_repository["mirror_args"],
 
         user=user,
 
-        schedule_status=jsonRepository["schedule_status"],
-        schedule_number=jsonRepository["schedule_number"],
+        schedule_status=json_repository["schedule_status"],
+        schedule_number=json_repository["schedule_number"],
 
-        schedule_minute=jsonRepository["schedule_minute"],
-        schedule_hour=jsonRepository["schedule_hour"],
-        schedule_day=jsonRepository["schedule_day"],
-        schedule_month=jsonRepository["schedule_month"],
-        schedule_year=jsonRepository["schedule_year"]
+        schedule_minute=json_repository["schedule_minute"],
+        schedule_hour=json_repository["schedule_hour"],
+        schedule_day=json_repository["schedule_day"],
+        schedule_month=json_repository["schedule_month"],
+        schedule_year=json_repository["schedule_year"]
     ).save()
-    repository = Repository.get(Repository.name == jsonRepository["name"])
+    repository = Repository.get(Repository.name == json_repository["name"])
     # создание таска здесь не должно быть -- задача модуля task (создать метод)
-    Task(repository=repository.name, message="{} create".format(jsonRepository["name"]), user=user.username).save()
-    TaskRunner(RepositoryFullCreate(repository)).run()
+    Task(repository=repository.name, message="{} create".format(json_repository["name"]), user=user.username).save()
+    TaskRunner(LinuxRepoManager(repository)).run()
 
 
-def update_repository_query(id, jsonRepository, username):
-    print(jsonRepository)
-
+def update_repository_query(id, json_repository, username):
     user = User.get(User.username == username)
     repository = Repository().get_by_id(id)
 
-    if check_repository_query(jsonRepository["name"]) and repository.name != jsonRepository["name"]:
+    if check_repository_query(json_repository["name"]) and repository.name != json_repository["name"]:
         return "-1"
 
     mirror_location = repository.mirror_location
 
-    repository.name = jsonRepository["name"]
-    repository.mirror_url = jsonRepository["mirror_url"]
-    repository.mirror_zpool = jsonRepository["mirror_zpool"]
-    repository.mirror_location = jsonRepository["mirror_location"]
-    repository.mirror_type = jsonRepository["mirror_type"]
-    repository.mirror_args = jsonRepository["mirror_args"]
+    repository.name = json_repository["name"]
+    repository.mirror_url = json_repository["mirror_url"]
+    repository.mirror_zpool = json_repository["mirror_zpool"]
+    repository.mirror_location = json_repository["mirror_location"]
+    repository.mirror_type = json_repository["mirror_type"]
+    repository.mirror_args = json_repository["mirror_args"]
 
-    repository.schedule_status = jsonRepository["schedule_status"]
-    repository.schedule_run = jsonRepository["schedule_run"]
-    repository.schedule_number = jsonRepository["schedule_number"]
+    repository.schedule_status = json_repository["schedule_status"]
+    repository.schedule_run = json_repository["schedule_run"]
+    repository.schedule_number = json_repository["schedule_number"]
 
-    repository.schedule_minute = jsonRepository["schedule_minute"]
-    repository.schedule_hour = jsonRepository["schedule_hour"]
-    repository.schedule_day = jsonRepository["schedule_day"]
-    repository.schedule_month = jsonRepository["schedule_month"]
-    repository.schedule_year = jsonRepository["schedule_year"]
+    repository.schedule_minute = json_repository["schedule_minute"]
+    repository.schedule_hour = json_repository["schedule_hour"]
+    repository.schedule_day = json_repository["schedule_day"]
+    repository.schedule_month = json_repository["schedule_month"]
+    repository.schedule_year = json_repository["schedule_year"]
 
     repository.updated_at = datetime.datetime.now()
 
     repository.save()
 
-    repository = Repository.get(Repository.name == jsonRepository["name"])
-    # ТАСК ВЫНЕСТИ!
-    Task(repository=repository.name, message="{} update".format(jsonRepository["name"]), user=user.username).save()
+    repository = Repository.get(Repository.name == json_repository["name"])
+    task.write_task_status(repo=repository, msg="{} update".format(json_repository["name"]))
     if repository.mirror_location != mirror_location:
-        TaskRunner(RepositoryReset(repository)).run()
+        TaskRunner(LinuxRepoManager(repository)).run()
     return 0
 
 
 def delete_repository_query(id, username):
     user = User.get(User.username == username)
     repository = Repository().get_by_id(id)
-    ###############
-    TaskRunner(RepositoryDelete(repository)).run()
-    ###############
-    Task(repository=repository.name, message="{} delete".format(repository.name), user=user.username).save()
+    TaskRunner(LinuxRepoManager(repository)).run()
+    task.write_task_status(repo=repository, msg="{} delete".format(repository.name))
     repository.delete_instance()
 
 

@@ -8,6 +8,8 @@ import time
 import requests
 import xml.dom.minidom
 
+from utils import loger
+
 
 class Yum:
     def __init__(self, dir_path, address_server):
@@ -60,6 +62,7 @@ class Yum:
         else:
             return r.status_code, None
 
+    @loger.output
     def update(self):
         tree_before = []
         for i in os.walk(self.dir_path):
@@ -133,6 +136,7 @@ class Rsync:
     def __repr__(self):
         return f"Rsync utility class: dir_path='{self.dir_path}', address_server='{self.address_server}'"
 
+    @loger.output
     def update(self, option_str="vaHz"):
         try:
             return 0, subprocess.check_output([

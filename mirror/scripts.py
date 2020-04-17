@@ -1,7 +1,9 @@
 import subprocess
 import config
+from utils import loger
 
 
+@loger.output
 def run_user_script_update(repo):
     if not config.on_update or config.on_update == "":
         return 0, "ok"
@@ -17,6 +19,7 @@ def run_user_script_update(repo):
             return 1, e.output
 
 
+@loger.output
 def run_user_script_truncate(repo):
     if not config.on_update or config.on_truncate == "":
         return 0, "ok"

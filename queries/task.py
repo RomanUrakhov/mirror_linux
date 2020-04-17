@@ -1,4 +1,4 @@
-from models.models import *
+from models.models import User, Repository, Task
 
 
 def get_task_query(id=1):
@@ -29,10 +29,10 @@ def get_task_list_query(offset=0, limit=15):
     return taskList
 
 
-def write_task_status(repo, msg):
+def write_task_status(repo: Repository, msg):
     if msg:
         if type(msg) in (bytes, bytearray):
             msg = msg.decode("uft-8")
         else:
             msg = "Unreadable characters"
-        Task(repository=repo.name, message=msg, user=User.get_by_id(1).username).save()
+        Task(repository=repo.name, message=msg, user=repo.user.username).save()

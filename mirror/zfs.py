@@ -88,15 +88,14 @@ class Zfs:
         0: successful execution
         1: execution failed
         """
-
         res = self.delete()
-        if res[0]:
-            return res
         res2 = self.create()
-        if res2[0]:
-            return res2
-        return 0, res
+        if not res and not res2:
+            return 0, "reset zfs successfully done"
+        else:
+            return 1, "reset zfs filed"
 
+    @loger.output
     def snapshot(self):
         """Creates a snapshot of zfs file system at `dir_path`
 

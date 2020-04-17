@@ -42,9 +42,9 @@ def func():
 
 
 class TaskRunner:
-    def __init__(self, repositoryClass):
-        self.repo = repositoryClass.repo
-        self.repositoryClass = repositoryClass
+    def __init__(self, repository_class):
+        self.repo = repository_class.repo
+        self.repository_class = repository_class
 
     def change_status_run_on(self):
         self.repo.schedule_run = True
@@ -56,7 +56,7 @@ class TaskRunner:
 
     def body(self):
         thread = ThreadWithTrace(
-            target=lambda: self.repositoryClass.run()
+            target=lambda: self.repository_class.run()
         )
         thread.start()
         thread.name = self.repo.name

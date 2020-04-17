@@ -36,9 +36,7 @@ class LinuxRepoManager:
     @logable(start_msg="Create task started", end_msg="Create task finished")
     def create(self):
         out = self.zfs.create()
-        task.write_task_status(repo=self.repo, msg=out[1])
         if out[0]:
-            task.write_task_status(repo=self.repo, msg="Error on creating")
             return 1
         return 0
 
@@ -53,28 +51,20 @@ class LinuxRepoManager:
                 out = 1, str(e)
         else:
             out = self.rsync.update(self.repo.mirror_args)
-        task.write_task_status(repo=self.repo, msg=out[1])
         if out[0]:
-            task.write_task_status(repo=self.repo, msg="Error on updating")
             return 1
         out = self.zfs.snapshot()
-        task.write_task_status(repo=self.repo, msg=out[1])
         if out[0]:
-            task.write_task_status(repo=self.repo, msg="Error on snapshotting")
             return 2
         out = scripts.run_user_script_update(self.repo)
-        task.write_task_status(repo=self.repo, msg=out[1])
         if out[0]:
-            task.write_task_status("Error on user update script")
             return 3
         return 0
 
     @logable(start_msg="Delete task started", end_msg="Delete task finished")
     def delete(self):
         out = self.zfs.delete()
-        task.write_task_status(repo=self.repo, msg=out[1])
         if out[0]:
-            task.write_task_status(repo=self.repo, msg="Error on deleting")
             return 2
         return 0
 
@@ -90,9 +80,7 @@ class LinuxRepoManager:
     @logable(start_msg="Reset task started", end_msg="Reset task finished")
     def reset(self):
         out = scripts.run_user_script_truncate(self.repo)
-        task.write_task_status(repo=self.repo, msg=out[1])
         if out[0]:
-            task.write_task_status(repo=self.repo, msg="Error on user truncate script")
             return 1
         if self.delete():
             return 2
@@ -100,4 +88,3 @@ class LinuxRepoManager:
         if self.full_create():
             return 3
         return 0
-
