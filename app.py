@@ -5,7 +5,6 @@ from queries.repository import *
 from queries.user import *
 from queries.task import *
 import re
-from mirror import scripts
 import config
 
 DEBUG = True
@@ -38,9 +37,6 @@ def catch_all(path):
     return render_template('index.html')
 
 
-#####################################
-##  Task
-#####################################
 @app.route("/api/mirror/check", methods=['POST'])
 @auth.login_required
 def check_repository():
@@ -94,19 +90,29 @@ def create_repository():
 
     result = ""
     if int(repository["mirror_type"]) == 0:
-        result = re.match(r"^(?:rsync:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
-                          repository["mirror_url"])
+        result = re.match(
+            r"^(?:rsync:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
+            repository["mirror_url"]
+        )
     else:
-        result = re.match(r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
-                          repository["mirror_url"])
-
+        result = re.match(
+            r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
+            repository["mirror_url"]
+        )
     if not result:
         return jsonify("-2")
 
     result = re.match(r"^[A-Za-z0-9_]+$", repository["mirror_location"])
-
     if not result:
         return jsonify("-3")
+
+    # checks if the schedule is not set
+    if not (repository["schedule_year"] or
+            repository["schedule_month"] or
+            repository["schedule_day"] or
+            repository["schedule_hour"] or
+            repository["schedule_minute"]):
+        return jsonify("-4")
 
     create_repository_query(repository, auth.username())
     return jsonify("ok")
@@ -159,10 +165,6 @@ def run_task(repository_id):
     run_repository_query(repository_id, auth.username())
     return jsonify("ok")
 
-
-#####################################
-##  User
-#####################################
 
 @app.route("/api/user/check", methods=['POST'])
 @auth.login_required
@@ -228,10 +230,6 @@ def get_group():
     return jsonify(get_group_query(auth.username()))
 
 
-#####################################
-##  Log
-#####################################
-
 @app.route("/api/task/count", methods=['GET'])
 @auth.login_required
 def get_task_count():
@@ -252,10 +250,6 @@ def get_task(task_id):
     return jsonify(get_task_query(task_id))
 
 
-#####################################
-##  zpool
-#####################################
-
 @app.route("/api/zpool", methods=['GET'])
 @auth.login_required
 def get_zpool_list_resp():
@@ -265,10 +259,6 @@ def get_zpool_list_resp():
     else:
         return jsonify(["zroot"])
 
-
-#####################################
-##  Main
-#####################################
 
 if __name__ == '__main__':
     app.run()
