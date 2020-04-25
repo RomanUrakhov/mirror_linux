@@ -62,7 +62,6 @@ class Yum:
         else:
             return r.status_code, None
 
-    @loger.output
     def update(self):
         tree_before = []
         for i in os.walk(self.dir_path):
@@ -136,7 +135,6 @@ class Rsync:
     def __repr__(self):
         return f"Rsync utility class: dir_path='{self.dir_path}', address_server='{self.address_server}'"
 
-    @loger.output
     def update(self, option_str="vaHz"):
         try:
             return 0, subprocess.check_output([
@@ -147,5 +145,3 @@ class Rsync:
             ])[-20000:]
         except subprocess.CalledProcessError as e:
             return 1, e.output
-
-
