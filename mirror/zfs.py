@@ -12,8 +12,6 @@ class Zfs:
     ----------
     dir_path : str
         a unique path for creating a new file system
-    snapshots_limit : int
-        a maximum number of zfs-snapshots that can be created within a given file system
 
     Methods
     -------
@@ -23,21 +21,22 @@ class Zfs:
     delete()
         recursively deletes all file systems at `dir_path`
 
-    reset()
-        resets (deletes and then creates new one) zfs file system at `dit_path`
-
     snapshot()
         creates a snapshot of zfs file system at `dir_path`
 
-    snapshots_count()
-        counts a number of snapshots exist within zfs file system at `dir_path`
+    snapshots_list()
+        returns a list of snapshots exist within zfs file system at `dir_path`
+
+    delete_snap()
+        deletes snapshot with specified name argument
+
+    zpool_list()
+        returns a list of existing zfs pools
     """
 
-    def __init__(self, dir_path, snapshots_limit=1):
+    def __init__(self, dir_path):
         self.dir_path = dir_path
-        self.snapshots_limit = snapshots_limit
 
-    @loger.output
     def create(self):
         """Creates new zfs filesystem at `dir_path`
 
@@ -56,7 +55,6 @@ class Zfs:
         except subprocess.CalledProcessError as e:
             return 1, e.output
 
-    @loger.output
     def delete(self):
         """Recursively deletes all file systems at `dir_path`
 
@@ -75,27 +73,6 @@ class Zfs:
         except subprocess.CalledProcessError as e:
             return 1, e.output
 
-    @loger.output
-    def reset(self):
-        """Resets (deletes and then creates new one) zfs file system at `dit_path`
-
-        Returns
-        _______
-        a pair of values `execution code` and `message`: (code, msg).
-
-        Return Codes
-        ____________
-        0: successful execution
-        1: execution failed
-        """
-        res = self.delete()
-        res2 = self.create()
-        if not res and not res2:
-            return 0, "reset zfs successfully done"
-        else:
-            return 1, "reset zfs filed"
-
-    @loger.output
     def snapshot(self):
         """Creates a snapshot of zfs file system at `dir_path`
 
@@ -112,39 +89,36 @@ class Zfs:
         snap_name = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         try:
             res = subprocess.check_output(["zfs", "snapshot", f"{self.dir_path}@{snap_name}"])
-            if self.snapshots_count() > self.snapshots_limit:
-                res += self.destroy_latest_snap()
         except subprocess.CalledProcessError as e:
             return 1, e.output
         return 0, res
 
-    def snapshots_count(self):
-        """Counts a number of snapshots exist within zfs file system at `dir_path`
+    def snapshot_list(self):
+        try:
+            out = subprocess.check_output(
+                f"zfs list -H -r -t snapshot -o name -S creation {self.dir_path}",
+                shell=True,
+            )
+            snap_list = [snap for snap in out.decode("utf-8").split('\n')][:-1]
+            return 0, snap_list
+        except subprocess.CalledProcessError as e:
+            return 1, e.output
 
-        Returns
-        _______
-        int number of snapshots
-        """
-
-        snap_count = subprocess.check_output(
-            f"zfs list -H -r -t snapshot -o name -S creation {self.dir_path} | wc -l",
-            shell=True,
-        )
-        return int(snap_count)
-
-    def destroy_latest_snap(self):
-        """Destroys latest snapshot to save the condition `current_snap_count` = `snapshots_limit`
+    @staticmethod
+    def destroy_snap(snap_path):
+        """Destroys snapshot by its name`
 
         Returns
         _______
         result of executing the snapshot destroying command
         """
-
-        return subprocess.check_output(
-            f"zfs list -H -r -t snapshot -o name -S creation {self.dir_path} | "
-            f"tail -1 | xargs -n 1 zfs destroy",
-            shell=True,
-        )
+        try:
+            return 0, subprocess.check_output(
+                f"zfs destroy {snap_path}",
+                shell=True,
+            )
+        except subprocess.CalledProcessError as e:
+            return 1, e.output
 
     @staticmethod
     def zpool_list():
@@ -162,9 +136,8 @@ class Zfs:
         """
 
         try:
-            return 0, subprocess.check_output(
-                "zpool list | awk '{if (FNR > 1) print $1}'",
-                shell=True,
-            )
+            out = subprocess.check_output("zpool list -H -o name", shell=True)
+            pool_list = [pool for pool in out.decode("utf-8").split('\n')][:-1]
+            return 0, pool_list
         except subprocess.CalledProcessError as e:
             return 1, e.output
