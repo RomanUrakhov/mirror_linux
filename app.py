@@ -6,6 +6,8 @@ from queries.user import *
 from queries.task import *
 import re
 import config
+from peewee import DoesNotExist
+from mirror import zfs
 
 DEBUG = True
 
@@ -21,7 +23,7 @@ auth = HTTPBasicAuth()
 def verify_password(username, password):
     try:
         User.get(User.username == username, User.password == User().sha256(password))
-    except:
+    except DoesNotExist:
         return False
     return True
 
@@ -125,11 +127,15 @@ def update_repository(repository_id):
 
     result = ""
     if int(repository["mirror_type"]) == 0:
-        result = re.match(r"^(?:rsync:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
-                          repository["mirror_url"])
+        result = re.match(
+            r"^(?:rsync:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
+            repository["mirror_url"]
+        )
     else:
-        result = re.match(r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
-                          repository["mirror_url"])
+        result = re.match(
+            r"^(?:http(s)?:\/\/)?[\w.-]+(?:\.[\w\.-]+)+[\w\-\._~:/?#[\]@!\$&'\(\)\*\+,;=.]+$",
+            repository["mirror_url"]
+        )
 
     if not result:
         return jsonify("-2")
@@ -138,6 +144,14 @@ def update_repository(repository_id):
 
     if not result:
         return jsonify("-3")
+
+    # checks if the schedule is not set
+    if not (repository["schedule_year"] or
+            repository["schedule_month"] or
+            repository["schedule_day"] or
+            repository["schedule_hour"] or
+            repository["schedule_minute"]):
+        return jsonify("-4")
 
     code = update_repository_query(repository_id, repository, auth.username())
     if not code:
@@ -200,7 +214,7 @@ def get_user(user_id):
 @auth.login_required
 def create_user():
     user = request.get_json()
-    if (check_user_query(user["username"])):
+    if check_user_query(user["username"]):
         return jsonify("-1")
 
     create_user_query(user, auth.username())
@@ -254,7 +268,7 @@ def get_task(task_id):
 @auth.login_required
 def get_zpool_list_resp():
     if config.isWork:
-        res = scripts.get_zpool_list()[1].decode('utf-8').split('\n')[:-1]
+        res = zfs.Zfs.zpool_list()[1]
         return jsonify(res)
     else:
         return jsonify(["zroot"])
