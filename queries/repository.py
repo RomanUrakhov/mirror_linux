@@ -1,17 +1,18 @@
-from models.models import *
+from models.models import Repository, User
 import datetime
-from dateutil.relativedelta import relativedelta
+from dateutil import relativedelta
 from mirror.repository import LinuxRepoManager
-from tasks.TaskRunner import TaskRunner
 from queries import task
+from peewee import DoesNotExist
 
 
-def get_repository_query(id=1):
-    repository = Repository.get_by_id(id)
-    print(repository)
+def get_repository_query(repo_id):
+    try:
+        repository = Repository.get_by_id(repo_id)
+    except DoesNotExist as e:
+        return "-1"
     return {
-        "id": int(repository.__str__()),
-
+        "id": repo_id,
         "name": repository.name,
         "mirror_url": repository.mirror_url,
         "mirror_zpool": repository.mirror_zpool,
@@ -41,11 +42,10 @@ def get_repository_count_query(username=""):
     else:
         user = User.get(User.username == username)
         query = Repository.select().where(Repository.user == user).count()
-
     return query
 
 
-def check_repository_query(name):
+def repository_exist(name):
     try:
         Repository.get(Repository.name == name)
     except DoesNotExist as e:
@@ -55,7 +55,6 @@ def check_repository_query(name):
 
 def get_repository_list_query(offset=0, limit=15, username="", my=False):
     repository_list = []
-    query = None
     user = User.get(User.username == username)
     if not my:
         if user.group != 0:
@@ -66,7 +65,7 @@ def get_repository_list_query(offset=0, limit=15, username="", my=False):
 
     for repository in query:
         repository_list.append({
-            "id": int(repository.__str__()),
+            "id": repository.get_id(),
             "name": repository.name,
             "user": repository.user.username,
             "schedule_status": repository.schedule_status,
@@ -79,7 +78,7 @@ def get_repository_list_query(offset=0, limit=15, username="", my=False):
 def create_repository_query(json_repository, username):
     user = User.get(User.username == username)
 
-    repository = Repository(
+    repository = Repository.create(
         name=json_repository["name"],
         mirror_url=json_repository["mirror_url"],
         mirror_zpool=json_repository["mirror_zpool"],
@@ -97,21 +96,22 @@ def create_repository_query(json_repository, username):
         schedule_day=json_repository["schedule_day"],
         schedule_month=json_repository["schedule_month"],
         schedule_year=json_repository["schedule_year"]
-    ).save()
-    repository = Repository.get(Repository.name == json_repository["name"])
-    # создание таска здесь не должно быть -- задача модуля task (создать метод)
-    Task(repository=repository.name, message="{} create".format(json_repository["name"]), user=user.username).save()
-    TaskRunner(LinuxRepoManager(repository)).run()
+    )
+    task.write_task_status(repo=repository, msg=f"{repository.name} creation")
+    manager = LinuxRepoManager(repository)
+    manager.full_create()
 
 
-def update_repository_query(id, json_repository, username):
-    user = User.get(User.username == username)
-    repository = Repository().get_by_id(id)
-
-    if check_repository_query(json_repository["name"]) and repository.name != json_repository["name"]:
+def edit_repository_query(repo_id, json_repository):
+    try:
+        repository = Repository().get_by_id(repo_id)
+    except DoesNotExist as e:
         return "-1"
 
-    mirror_location = repository.mirror_location
+    if repository_exist(json_repository["name"]):
+        return "-1"
+
+    old_mirror_location = repository.mirror_location
 
     repository.name = json_repository["name"]
     repository.mirror_url = json_repository["mirror_url"]
@@ -131,44 +131,48 @@ def update_repository_query(id, json_repository, username):
     repository.schedule_year = json_repository["schedule_year"]
 
     repository.updated_at = datetime.datetime.now()
-
     repository.save()
 
-    repository = Repository.get(Repository.name == json_repository["name"])
-    task.write_task_status(repo=repository, msg="{} update".format(json_repository["name"]))
-    if repository.mirror_location != mirror_location:
-        TaskRunner(LinuxRepoManager(repository)).run()
+    task.write_task_status(repo=repository, msg=f"{repository.name} editing")
+
+    if repository.mirror_location != old_mirror_location:
+        manager = LinuxRepoManager(repository)
+        manager.reset()
     return 0
 
 
-def delete_repository_query(id, username):
-    user = User.get(User.username == username)
-    repository = Repository().get_by_id(id)
-    TaskRunner(LinuxRepoManager(repository)).run()
-    task.write_task_status(repo=repository, msg="{} delete".format(repository.name))
+def delete_repository_query(repo_id):
+    try:
+        repository = Repository().get_by_id(repo_id)
+    except DoesNotExist as e:
+        return "-1"
+    task.write_task_status(repo=repository, msg=f"{repository.name} deleting")
+    manager = LinuxRepoManager(repository)
+    manager.delete()
     repository.delete_instance()
 
 
-def run_repository_query(id, username):
-    user = User.get(User.username == username)
-    repository = Repository().get_by_id(id)
-    ###############
-    TaskRunner(RepositoryUpdate(repository)).run()
-    ###############
-    Task(repository=repository.name, message="{} run".format(repository.name), user=user.username).save()
+def run_repository_query(repo_id):
+    try:
+        repository = Repository().get_by_id(repo_id)
+    except DoesNotExist as e:
+        return "-1"
+    task.write_task_status(repo=repository, msg=f"{repository.name} updating")
+    # Вызов демона для обновления
+    # TaskRunner(RepositoryUpdate(repository)).run()
 
 
-def reset_repository_query(id, username):
-    user = User.get(User.username == username)
-    repository = Repository().get_by_id(id)
-    repository.mirror_init = False
-    ###############
-    TaskRunner(RepositoryReset(repository)).run()
-    ###############
-    Task(repository=repository.name, message="{} run".format(repository.name), user=user.username).save()
+def reset_repository_query(repo_id):
+    try:
+        repository = Repository().get_by_id(repo_id)
+    except DoesNotExist as e:
+        return "-1"
+    task.write_task_status(repo=repository, msg=f"{repository.name} resetting")
+    manager = LinuxRepoManager(repository)
+    manager.reset()
 
 
-def update_date_task(repo: Repository):
+def set_next_update_date(repo: Repository):
     date = datetime.datetime.now()
     date += relativedelta(
         years=repo.schedule_year,

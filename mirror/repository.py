@@ -43,7 +43,7 @@ class LinuxRepoManager:
 
     @loger.state(start_msg="Update task started", end_msg="Update task finished")
     def update(self):
-        repository.update_date_task(repo=self.repo)
+        repository.set_next_update_date(repo=self.repo)
         out = tuple()
         if self.repo.mirror_type == 1:
             try:

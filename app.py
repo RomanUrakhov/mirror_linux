@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request, render_template, send_from_directory
-from flask_cors import CORS
 from flask_httpauth import HTTPBasicAuth
+from flask_cors import CORS
 from queries.repository import *
 from queries.user import *
 from queries.task import *
@@ -13,9 +13,7 @@ DEBUG = True
 
 app = Flask(__name__)
 app.config.from_object(__name__)
-
 CORS(app)
-
 auth = HTTPBasicAuth()
 
 
@@ -43,7 +41,7 @@ def catch_all(path):
 @auth.login_required
 def check_repository():
     name = request.get_json()
-    return jsonify(check_repository_query(name["name"]))
+    return jsonify(repository_exist(name["name"]))
 
 
 @app.route("/api/mirror", methods=['GET'])
@@ -87,7 +85,7 @@ def get_repository(repository_id):
 @auth.login_required
 def create_repository():
     repository = request.get_json()
-    if check_repository_query(repository["name"]):
+    if repository_exist(repository["name"]):
         return jsonify("-1")
 
     result = ""
@@ -153,7 +151,7 @@ def update_repository(repository_id):
             repository["schedule_minute"]):
         return jsonify("-4")
 
-    code = update_repository_query(repository_id, repository, auth.username())
+    code = edit_repository_query(repository_id, repository)
     if not code:
         return jsonify("ok")
     return jsonify(code)
@@ -162,21 +160,21 @@ def update_repository(repository_id):
 @app.route("/api/mirror/<int:repository_id>/delete", methods=['DELETE'])
 @auth.login_required
 def delete_repository(repository_id):
-    delete_repository_query(repository_id, auth.username())
+    delete_repository_query(repository_id)
     return jsonify("ok")
 
 
 @app.route("/api/mirror/<int:repository_id>/reset", methods=['get'])
 @auth.login_required
 def reset_repository(repository_id):
-    reset_repository_query(repository_id, auth.username())
+    reset_repository_query(repository_id)
     return jsonify("ok")
 
 
 @app.route("/api/mirror/<int:repository_id>/run", methods=['get'])
 @auth.login_required
 def run_task(repository_id):
-    run_repository_query(repository_id, auth.username())
+    run_repository_query(repository_id)
     return jsonify("ok")
 
 
