@@ -37,7 +37,7 @@ def catch_all(path):
     return render_template('index.html')
 
 
-@app.route("/api/mirror/check", methods=['POST'])
+@app.route("/api/repository/check", methods=['POST'])
 @auth.login_required
 def check_repository():
     name = request.get_json()
@@ -55,7 +55,7 @@ def get_repository_list():
     return jsonify(data)
 
 
-@app.route("/api/mirror/my", methods=['GET'])
+@app.route("/api/repository/my", methods=['GET'])
 @auth.login_required
 def get_my_repository_list():
     offset = request.args.get("offset", default=0, type=int)
@@ -63,25 +63,25 @@ def get_my_repository_list():
     return jsonify(get_repository_list_query(offset, limit, auth.username(), my=True))
 
 
-@app.route("/api/mirror/count", methods=['GET'])
+@app.route("/api/repository/count", methods=['GET'])
 @auth.login_required
 def get_repository_count():
     return jsonify(get_repository_count_query())
 
 
-@app.route("/api/mirror/my/count", methods=['GET'])
+@app.route("/api/repository/my/count", methods=['GET'])
 @auth.login_required
 def get_my_repository_count():
     return jsonify(get_repository_count_query(auth.username()))
 
 
-@app.route("/api/mirror/<int:repository_id>", methods=['GET'])
+@app.route("/api/repository/<int:repository_id>", methods=['GET'])
 @auth.login_required
 def get_repository(repository_id):
     return jsonify(get_repository_query(repository_id))
 
 
-@app.route("/api/mirror/create", methods=['POST'])
+@app.route("/api/repository/create", methods=['POST'])
 @auth.login_required
 def create_repository():
     repository = request.get_json()
@@ -118,7 +118,7 @@ def create_repository():
     return jsonify("ok")
 
 
-@app.route("/api/mirror/<int:repository_id>/update", methods=['PUT'])
+@app.route("/api/repository/<int:repository_id>/update", methods=['PUT'])
 @auth.login_required
 def update_repository(repository_id):
     repository = request.get_json()
@@ -157,21 +157,21 @@ def update_repository(repository_id):
     return jsonify(code)
 
 
-@app.route("/api/mirror/<int:repository_id>/delete", methods=['DELETE'])
+@app.route("/api/repository/<int:repository_id>/delete", methods=['DELETE'])
 @auth.login_required
 def delete_repository(repository_id):
     delete_repository_query(repository_id)
     return jsonify("ok")
 
 
-@app.route("/api/mirror/<int:repository_id>/reset", methods=['get'])
+@app.route("/api/repository/<int:repository_id>/reset", methods=['get'])
 @auth.login_required
 def reset_repository(repository_id):
     reset_repository_query(repository_id)
     return jsonify("ok")
 
 
-@app.route("/api/mirror/<int:repository_id>/run", methods=['get'])
+@app.route("/api/repository/<int:repository_id>/run", methods=['get'])
 @auth.login_required
 def run_task(repository_id):
     run_repository_query(repository_id)
