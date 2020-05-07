@@ -4,8 +4,8 @@ from models.models import Repository, Task
 def get_task_query(id=1):
     task = Task.get_by_id(id)
     return {
-        "id": int(task.__str__()),
-        "mirror": task.repository,
+        "id": task.get_id(),
+        "repository": task.repository,
         "message": task.message[-20000:],
         "user": task.user,
         "date": task.date,
@@ -20,8 +20,8 @@ def get_task_list_query(offset=0, limit=15):
     task_list = []
     for task in Task.select().offset(offset).limit(limit):
         task_list.append({
-            "id": int(task.__str__()),
-            "mirror": task.repository,
+            "id": task.getid(),
+            "repository": task.repository,
             "message": task.message[:50],
             "user": task.user,
             "date": task.date,
