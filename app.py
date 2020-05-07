@@ -208,7 +208,7 @@ def create_user():
     if check_user_query(user["username"]):
         return jsonify("-1")
 
-    create_user_query(user, auth.username())
+    create_user_query(user)
     return jsonify("ok")
 
 
@@ -216,7 +216,7 @@ def create_user():
 @auth.login_required
 def update_user(user_id):
     user = request.get_json()
-    code = update_user_query(user_id, user, auth.username())
+    code = update_user_query(user_id, user)
     if not code:
         return jsonify("ok")
     return jsonify(code)
@@ -225,7 +225,7 @@ def update_user(user_id):
 @app.route("/api/user/<int:user_id>/delete", methods=['DELETE'])
 @auth.login_required
 def delete_user(user_id):
-    delete_user_query(user_id, auth.username())
+    delete_user_query(user_id)
     return jsonify("ok")
 
 
