@@ -171,13 +171,6 @@ def reset_repository(repository_id):
     return jsonify("ok")
 
 
-@app.route("/api/repository/<int:repository_id>/run", methods=['get'])
-@auth.login_required
-def run_task(repository_id):
-    run_repository_query(repository_id)
-    return jsonify("ok")
-
-
 @app.route("/api/user/check", methods=['POST'])
 @auth.login_required
 def check_user():

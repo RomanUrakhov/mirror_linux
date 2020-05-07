@@ -139,13 +139,6 @@ def delete_repository_query(repo_id):
         pass
 
 
-def run_repository_query(repo_id):
-    repository = Repository().get_by_id(repo_id)
-    task.write_task_status(repo=repository, msg=f"{repository.name} updating")
-    # Вызов демона для обновления
-    # TaskRunner(RepositoryUpdate(repository)).run()
-
-
 def reset_repository_query(repo_id):
     repository = Repository().get_by_id(repo_id)
     task.write_task_status(repo=repository, msg=f"{repository.name} resetting")
