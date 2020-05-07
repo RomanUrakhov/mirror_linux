@@ -8,8 +8,6 @@ import time
 import requests
 import xml.dom.minidom
 
-from utils import loger
-
 
 class Yum:
     def __init__(self, dir_path, address_server):
@@ -29,7 +27,7 @@ class Yum:
         if if_modified_since:
             try:
                 mod_time = os.path.getmtime(filepath)
-                headers["If-Modified-Since"] = time.strftime('%a, %d %m %Y %H:%M:%S GMT', time.gmtime(mod_time))
+                headers["If-Modified-Since"] = time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(mod_time))
             except OSError as e:
                 pass
 
@@ -40,7 +38,7 @@ class Yum:
         if r.status_code == 200:
             mod_time = None
             if 'Last-Modified' in r.headers:
-                mod_time = calendar.timegm(time.strptime(r.headers['Last-Modified'], "%a, %d %m %Y %H:%M:%S %Z"))
+                mod_time = calendar.timegm(time.strptime(r.headers['Last-Modified'], "%a, %d %b %Y %H:%M:%S %Z"))
 
             if stream:
                 with open(filepath, 'wb') as fd:
@@ -72,9 +70,9 @@ class Yum:
         (http_code, repomd_content) = self.download('repodata/repomd.xml')
 
         if http_code == 304:
-            return 0, "ok"
+            return "ok"
         elif http_code != 200:
-            return 1, "Error on download repodata/repomd.xml: " + http_code
+            raise Exception("Error on download repodata/repomd.xml: " + http_code)
 
         downloaded_set.add('repodata/repomd.xml')
 
@@ -94,7 +92,7 @@ class Yum:
             if is_primary:
                 (http_code, primary_content) = self.download(metafile, False)
                 if http_code != 200:
-                    return 1, "Error on download " + metafile + ": " + http_code
+                    raise Exception("Error on download " + metafile + ": " + http_code)
 
                 if metafile.endswith("primary.xml.gz"):
                     primary_content = gzip.decompress(primary_content)
@@ -106,14 +104,14 @@ class Yum:
             else:
                 (http_code, IGNORE) = self.download(metafile, False, True)
                 if http_code != 200:
-                    return 1, "Error on download " + metafile + ": " + http_code
+                    raise Exception("Error on download " + metafile + ": " + http_code)
 
             downloaded_set.add(metafile)
 
         for rpm in rpms:
             (http_code, IGNORE) = self.download(rpm, True, True)
             if http_code != 200 and http_code != 304:
-                return 1, "Error on download " + rpm + ": " + http_code
+                raise Exception("Error on download " + rpm + ": " + http_code)
 
             downloaded_set.add(rpm)
 
@@ -124,7 +122,7 @@ class Yum:
                 if not (rel_path in downloaded_set):
                     os.remove(path)
 
-        return 0, "Ok"
+        return "Ok"
 
 
 class Rsync:
@@ -135,13 +133,10 @@ class Rsync:
     def __repr__(self):
         return f"Rsync utility class: dir_path='{self.dir_path}', address_server='{self.address_server}'"
 
-    def update(self, option_str="vaHz"):
-        try:
-            return 0, subprocess.check_output([
-                "rsync",
-                f"-{option_str}",
-                self.address_server,
-                f"/{self.dir_path}/",
-            ])[-20000:]
-        except subprocess.CalledProcessError as e:
-            return 1, e.output
+    def update(self, option_str="-vaHz"):
+        return subprocess.run([
+            "rsync",
+            f"{option_str}",
+            self.address_server,
+            f"/{self.dir_path}/",
+        ], capture_output=True).stdout
