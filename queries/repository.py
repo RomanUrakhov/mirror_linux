@@ -7,10 +7,7 @@ from peewee import DoesNotExist
 
 
 def get_repository_query(repo_id):
-    try:
-        repository = Repository.get_by_id(repo_id)
-    except DoesNotExist as e:
-        return "-1"
+    repository = Repository.get_by_id(repo_id)
     return {
         "id": repo_id,
         "name": repository.name,
@@ -48,7 +45,7 @@ def get_repository_count_query(username=""):
 def repository_exist(name):
     try:
         Repository.get(Repository.name == name)
-    except DoesNotExist as e:
+    except DoesNotExist:
         return False
     return True
 
@@ -98,20 +95,13 @@ def create_repository_query(json_repository, username):
         schedule_year=json_repository["schedule_year"]
     )
     task.write_task_status(repo=repository, msg=f"{repository.name} creation")
-    manager = LinuxRepoManager(repository)
-    manager.full_create()
 
 
 def edit_repository_query(repo_id, json_repository):
-    try:
-        repository = Repository().get_by_id(repo_id)
-    except DoesNotExist as e:
-        return "-1"
+    repository = Repository().get_by_id(repo_id)
 
-    if repository_exist(json_repository["name"]):
+    if repository_exist(json_repository['name']) and repository.name != json_repository['name']:
         return "-1"
-
-    old_mirror_location = repository.mirror_location
 
     repository.name = json_repository["name"]
     repository.mirror_url = json_repository["mirror_url"]
@@ -134,42 +124,31 @@ def edit_repository_query(repo_id, json_repository):
     repository.save()
 
     task.write_task_status(repo=repository, msg=f"{repository.name} editing")
-
-    if repository.mirror_location != old_mirror_location:
-        manager = LinuxRepoManager(repository)
-        manager.reset()
     return 0
 
 
 def delete_repository_query(repo_id):
-    try:
-        repository = Repository().get_by_id(repo_id)
-    except DoesNotExist as e:
-        return "-1"
+    repository = Repository().get_by_id(repo_id)
     task.write_task_status(repo=repository, msg=f"{repository.name} deleting")
-    manager = LinuxRepoManager(repository)
-    manager.delete()
-    repository.delete_instance()
+    try:
+        manager = LinuxRepoManager(repository)
+        manager.delete()
+        repository.delete_instance()
+    except Exception:
+        # how to process exception?
+        pass
 
 
 def run_repository_query(repo_id):
-    try:
-        repository = Repository().get_by_id(repo_id)
-    except DoesNotExist as e:
-        return "-1"
+    repository = Repository().get_by_id(repo_id)
     task.write_task_status(repo=repository, msg=f"{repository.name} updating")
     # Вызов демона для обновления
     # TaskRunner(RepositoryUpdate(repository)).run()
 
 
 def reset_repository_query(repo_id):
-    try:
-        repository = Repository().get_by_id(repo_id)
-    except DoesNotExist as e:
-        return "-1"
+    repository = Repository().get_by_id(repo_id)
     task.write_task_status(repo=repository, msg=f"{repository.name} resetting")
-    manager = LinuxRepoManager(repository)
-    manager.reset()
 
 
 def set_next_update_date(repo: Repository):
