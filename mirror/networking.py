@@ -134,9 +134,14 @@ class Rsync:
         return f"Rsync utility class: dir_path='{self.dir_path}', address_server='{self.address_server}'"
 
     def update(self, option_str="-vaHz"):
-        return subprocess.run([
-            "rsync",
-            f"{option_str}",
-            self.address_server,
-            f"/{self.dir_path}/",
-        ], capture_output=True).stdout
+        return subprocess.run(
+            [
+                "rsync",
+                f"{option_str}",
+                self.address_server,
+                f"/{self.dir_path}/",
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT
+        ).stdout
