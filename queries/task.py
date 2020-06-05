@@ -40,5 +40,8 @@ def write_task_status(repo: Repository, msg):
                 else:
                     msg = "Unreadable characters"
             else:
-                msg = "Unreadable characters"
+                if type(msg) in (bytes, bytearray):
+                    msg = msg.decode('utf-8')
+                else:
+                    msg = "Unreadable characters"
         Task(repository=repo.name, message=msg, user=repo.user.username).save()
