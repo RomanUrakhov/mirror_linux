@@ -1,9 +1,9 @@
 import subprocess
 
-import config
+import api_config
 from mirror.networking import Yum, Rsync
 from mirror.zfs import Zfs
-from models.models import Repository
+from app.models import Repository
 from utils import loger
 
 
@@ -17,21 +17,21 @@ class LinuxRepoManager:
         return f"Manager of {self.repo.name} repository"
 
     def __user_script_update(self, snap):
-        if not config.on_update or config.on_update == "":
+        if not api_config.ON_UPDATE or api_config.ON_UPDATE == "":
             return ""
         location = f"/{self.repo.mirror_zpool}/{self.repo.mirror_location}"
         return subprocess.run(
-            [config.on_update, self.repo.mirror_zpool, self.repo.mirror_location, location, snap],
+            [api_config.ON_UPDATE, self.repo.mirror_zpool, self.repo.mirror_location, location, snap],
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         ).stdout
 
     def __user_script_truncate(self):
-        if not config.on_truncate or config.on_truncate == "":
+        if not api_config.ON_TRUNCATE or api_config.ON_TRUNCATE == "":
             return ""
         return subprocess.run(
-            [config.on_truncate, self.repo.mirror_zpool, self.repo.mirror_location],
+            [api_config.ON_TRUNCATE, self.repo.mirror_zpool, self.repo.mirror_location],
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT

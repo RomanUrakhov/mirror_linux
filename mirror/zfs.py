@@ -60,10 +60,12 @@ class Zfs:
 
     @staticmethod
     def zpool_list():
-        return subprocess.run(
+        out = subprocess.run(
             "zpool list -H -o name",
             shell=True,
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         ).stdout
+        zpool_list = [zpool for zpool in out.decode("utf-8").split('\n')][:-1]
+        return zpool_list

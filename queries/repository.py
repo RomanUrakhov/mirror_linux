@@ -1,4 +1,4 @@
-from models.models import Repository, User
+from app.models import Repository, User
 import datetime
 from dateutil import relativedelta
 from mirror.repository import LinuxRepoManager
@@ -135,7 +135,6 @@ def delete_repository_query(repo_id):
         manager.delete()
         repository.delete_instance()
     except Exception:
-        # how to process exception?
         pass
 
 

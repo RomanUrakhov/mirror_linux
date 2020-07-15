@@ -1,14 +1,14 @@
-from models.models import *
-from queries.repository import *
+from queries.repository import create_repository_query
+from app.models import User
 
 
 def init_user():
-    User(username="root", password=User().sha256("123"), group=0).save()
-    User(username="user1", password=User().sha256("123"), group=1).save()
+    User(username="root", password=User().encrypt("123"), group=0).save()
+    User(username="user1", password=User().encrypt("123"), group=1).save()
 
 
-def init_task():
-    for i in range(2):
+def init_repos():
+    for i in range(1):
         create_repository_query({
             "mirror_zpool": "zroot",
             "mirror_args": "-vaHz",
@@ -17,8 +17,8 @@ def init_task():
             "mirror_url": "rsync://mirror.yandex.ru/debian/doc/FAQ/",
             "name": f"debian{i}",
             "schedule_day": 0,
-            "schedule_hour": 0,
-            "schedule_minute": 1,
+            "schedule_hour": 1,
+            "schedule_minute": 0,
             "schedule_month": 0,
             "schedule_number": 2,
             "schedule_status": True,
@@ -33,8 +33,8 @@ def init_task():
             "mirror_url": "rsync://mirror.yandex.ru/debian/doc/FAQ/",
             "name": f"centOS{i}",
             "schedule_day": 0,
-            "schedule_hour": 0,
-            "schedule_minute": 1,
+            "schedule_hour": 1,
+            "schedule_minute": 0,
             "schedule_month": 0,
             "schedule_number": 2,
             "schedule_status": True,
@@ -49,8 +49,8 @@ def init_task():
             "mirror_url": "rsync://mirror.yandex.ru/debian/doc/FAQ/",
             "name": f"opensuse{i}",
             "schedule_day": 0,
-            "schedule_hour": 0,
-            "schedule_minute": 1,
+            "schedule_hour": 1,
+            "schedule_minute": 0,
             "schedule_month": 0,
             "schedule_number": 2,
             "schedule_status": False,
@@ -65,8 +65,8 @@ def init_task():
             "mirror_url": "rsync://mirror.yandex.ru/debian/doc/FAQ/",
             "name": f"ubuntu{i}",
             "schedule_day": 0,
-            "schedule_hour": 0,
-            "schedule_minute": 2,
+            "schedule_hour": 2,
+            "schedule_minute": 0,
             "schedule_month": 0,
             "schedule_number": 2,
             "schedule_status": True,

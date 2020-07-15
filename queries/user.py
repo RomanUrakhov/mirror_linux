@@ -1,4 +1,4 @@
-from models.models import User
+from app.models import User
 from peewee import DoesNotExist
 
 
@@ -27,6 +27,7 @@ def get_user_list_query(offset=0, limit=15, username=""):
     user_list = []
 
     user = User.get(User.username == username)
+    print(user)
     if user.group != 0:
         return "-1"
 
@@ -42,7 +43,7 @@ def get_user_list_query(offset=0, limit=15, username=""):
 def create_user_query(json_user):
     User(
         username=json_user["username"],
-        password=User().sha256(json_user["password"]),
+        password=User().encrypt(json_user["password"]),
         group=json_user["group"]
     ).save()
 
@@ -54,7 +55,7 @@ def update_user_query(id, json_user):
 
     user.username = json_user["username"]
     if json_user["password"]:
-        user.password = User().sha256(json_user["password"])
+        user.password = User().encrypt(json_user["password"])
     user.group = json_user["group"]
     user.save()
 

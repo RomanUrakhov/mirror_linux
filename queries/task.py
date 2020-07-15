@@ -1,4 +1,4 @@
-from models.models import Repository, Task
+from app.models import Repository, Task
 
 
 def get_task_query(id=1):

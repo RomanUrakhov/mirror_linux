@@ -1,26 +1,20 @@
 from peewee import *
-from models.db_getter import get_db
 import datetime
 import hashlib
-
-db = get_db()
-
-
-class BaseModel(Model):
-    class Meta:
-        database = db
+from . import db_wrapper
 
 
-class User(BaseModel):
+class User(db_wrapper.Model):
     username = CharField()
     password = CharField()
     group = IntegerField()
 
-    def sha256(self, passwd):
+    @staticmethod
+    def encrypt(passwd):
         return hashlib.sha256(passwd.encode('utf-8')).hexdigest()
 
 
-class Repository(BaseModel):
+class Repository(db_wrapper.Model):
     name = CharField()
     mirror_url = CharField()
     mirror_zpool = CharField()
@@ -29,7 +23,7 @@ class Repository(BaseModel):
     mirror_args = CharField()
     mirror_init = BooleanField(default=False)
 
-    user = ForeignKeyField(User, backref='tasks', on_delete='cascade')
+    user = ForeignKeyField(User, backref='daemon', on_delete='cascade')
 
     schedule_status = BooleanField(default=False)
     schedule_run = BooleanField(default=False)
@@ -47,12 +41,13 @@ class Repository(BaseModel):
     updated_at = DateTimeField(default=datetime.datetime.now())
 
 
-class Task(BaseModel):
+class Task(db_wrapper.Model):
     message = CharField()
     repository = CharField()
     user = CharField()
     date = DateTimeField(default=datetime.datetime.now)
 
 
-class QueueTask(BaseModel):
+class QueueTask(db_wrapper.Model):
     repository = ForeignKeyField(Repository, backref='repositories', unique=True, on_delete='cascade')
+    pid = IntegerField()
